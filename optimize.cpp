@@ -7,9 +7,16 @@
 #include <string>
 #include <sstream>
 #include <math.h>
+#include <utility>
 
 #define PI 3.14159265
 #define COLORINDEX 2
+
+struct sorter{
+    bool operator()(const std::pair<int, int> &left, const std::pair<int, int> &right){
+        return left.second < right.second;
+    }
+};
 
 
 std::vector<double> ConstructVector(std::vector<double> tip, std::vector<double> base){
@@ -165,14 +172,16 @@ std::string matchColorNumberToLabel(int colorToConsider){
 void OptimizeMatches(std::map<int, std::vector<double> > &users, 
                      std::map<int, std::vector<double> > &sats,
                      std::map<int, std::vector<int> > &validUsersForSatellites, 
-                     std::map<int, std::vector<int> > &userMatches){
+                     std::map<int, std::vector<int> > &userMatches,
+                     std::vector<std::pair<int, int> > &orderedByUserSatellites){
 
-    std::map<int, std::vector<int> >::iterator currentSat;
-    for(currentSat = validUsersForSatellites.begin(); currentSat != validUsersForSatellites.end(); ++currentSat){ 
-        int satID = currentSat -> first;
+    std::vector<std::pair<int, int> >::iterator currentPairIter;
+    for(currentPairIter = orderedByUserSatellites.begin(); currentPairIter != orderedByUserSatellites.end(); ++currentPairIter){ 
+        std::pair<int, int> currentPair = *currentPairIter;
+        int satID = currentPair.first;
         //std::cout << "This is the Satellite ID: " << satID << "\n";
         int beamNumber = 1;
-        std::vector<int> userIDS = currentSat -> second;
+        std::vector<int> userIDS = validUsersForSatellites[satID];
         std::vector<int> freshUserIDS;
 
         for(int i = 0; i < userIDS.size(); i++){
@@ -313,6 +322,22 @@ void PopulateDictionaries(char *filename,
     }                        
 }
 
+void CreateSortedVectorForSatellites(std::map<int, std::vector<int> > &validUsersForSatellites, 
+                                     std::vector<std::pair<int, int> > &orderedByUserSatellites){
+    std::map<int, std::vector<int> >::iterator iter;
+    
+    for(iter = validUsersForSatellites.begin(); iter != validUsersForSatellites.end(); ++iter){
+        int ID = iter -> first;
+        std::vector<int> users = iter -> second;
+        
+        std::pair<int, int> insertValue = std::make_pair(ID, users.size());
+        orderedByUserSatellites.push_back(insertValue);
+    }
+
+    std::sort(orderedByUserSatellites.begin(), orderedByUserSatellites.end(), sorter());
+    
+}
+
 
 
 
@@ -320,35 +345,15 @@ int main(int argc, char** argv){
     char* filename = argv[1];
     std::map<int, std::vector<double> > users, sats, interferers;
     std::map<int, std::vector<int> > inRangeSats, validUserSatsMap, validUsersForSatellites, userMatches;
+    std::vector<std::pair<int, int> > orderedByUserSatellites;
 
 
     PopulateDictionaries(filename, users, sats, interferers);
     BuildInRangeSatellitesDictionary(users, sats, inRangeSats);
     BuildValidSatellitesDictionary(users, sats, interferers, inRangeSats, validUserSatsMap);
     CreateSatellitesToUsers(validUserSatsMap, validUsersForSatellites);
-    OptimizeMatches(users, sats, validUsersForSatellites, userMatches);
-
-
-    std::map<int, std::vector<int> >::iterator itr;
-    
-    
-
-    std::set<int> numbersSeen;
-    for(itr = validUsersForSatellites.begin(); itr != validUsersForSatellites.end(); ++itr){
-        //std::cout << "User ID: " << (itr -> first) << "\n";
-        //std::cout << "Coordinates: ";
-        std::vector<int> coordinates = itr -> second;
-        for(int i = 0; i < coordinates.size(); i++){
-            //printf("%d ", coordinates[i]);
-            numbersSeen.insert(coordinates[i]);
-        }
-        std::cout << "\n";
-
-    }
-
-    //std::cout << "Number of numbers seen: " << numbersSeen.size() << "\n";
-
-
+    CreateSortedVectorForSatellites(validUsersForSatellites, orderedByUserSatellites);
+    OptimizeMatches(users, sats, validUsersForSatellites, userMatches, orderedByUserSatellites);
 
     return 0;
 
