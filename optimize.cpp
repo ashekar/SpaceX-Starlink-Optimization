@@ -11,14 +11,20 @@
 
 #define PI 3.14159265
 #define COLORINDEX 2
+#define OVERFLOWSATS 33
 
+/*
+Sorting Function for Vectors
+*/
 struct sorter{
     bool operator()(const std::pair<int, int> &left, const std::pair<int, int> &right){
         return left.second < right.second;
     }
 };
 
-
+/*
+Function to construct opposite side of vectors.
+*/
 std::vector<double> ConstructVector(std::vector<double> tip, std::vector<double> base){
     double x3 = tip[0] - base[0];
     double y3 = tip[1] - base[1];
@@ -30,6 +36,9 @@ std::vector<double> ConstructVector(std::vector<double> tip, std::vector<double>
     return newArrow;
 }
 
+/*
+Test if the angle between two vectors is within range 
+*/
 bool WithinAngleRange(std::vector<double> a, std::vector<double> b, double range){
     double dotproduct = a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
     double aHypotenuse = sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]);
@@ -43,6 +52,10 @@ bool WithinAngleRange(std::vector<double> a, std::vector<double> b, double range
 
 }
 
+
+/*
+Build Map of which users can access which satellites.
+*/
 void BuildInRangeSatellitesDictionary(std::map<int, std::vector<double> > &users, 
                                         std::map<int, std::vector<double> > &sats,
                                         std::map<int, std::vector<int> > &inRangeSats){
@@ -59,7 +72,7 @@ void BuildInRangeSatellitesDictionary(std::map<int, std::vector<double> > &users
             std::vector<double> satCoordinates = currentSat -> second;
 
             std::vector<double> constructedVector = ConstructVector(satCoordinates, userCoordinates);
-            if(WithinAngleRange(constructedVector, userCoordinates, 45.0)){
+            if(WithinAngleRange(constructedVector, userCoordinates, 45.00)){
                 satelliteIDS.push_back(satID);
             }
         }
@@ -69,6 +82,10 @@ void BuildInRangeSatellitesDictionary(std::map<int, std::vector<double> > &users
     }          
 }
 
+
+/*
+Filter the the list of in range satellites with interferers.
+*/
 void BuildValidSatellitesDictionary(std::map<int, std::vector<double> > &users, 
                                     std::map<int, std::vector<double> > &sats,
                                     std::map<int, std::vector<double> > &interferers,
@@ -92,7 +109,7 @@ void BuildValidSatellitesDictionary(std::map<int, std::vector<double> > &users,
             for(currentInterferer = interferers.begin(); currentInterferer != interferers.end(); ++currentInterferer){
                 std::vector<double> interCoordinates = currentInterferer -> second;
                 std::vector<double> constructedVectorTwo = ConstructVector(interCoordinates, userCoordinates);
-                if(WithinAngleRange(constructedVectorOne, constructedVectorTwo, 20.0)){
+                if(WithinAngleRange(constructedVectorOne, constructedVectorTwo, 20.00)){
                     validSatIndicator = false;
                 }
             }
@@ -105,6 +122,10 @@ void BuildValidSatellitesDictionary(std::map<int, std::vector<double> > &users,
     }
 }
 
+
+/*
+Map Satellites to Filtered Users (Flip output of previous function)
+*/
 void CreateSatellitesToUsers(std::map<int, std::vector<int> > &validUserSatsMap,
                              std::map<int, std::vector<int> > &validUsersForSatellites){
 
@@ -126,6 +147,10 @@ void CreateSatellitesToUsers(std::map<int, std::vector<int> > &validUserSatsMap,
     }
 }
 
+
+/*
+Find which users are within a 10 degree angle of the same starlink satellite
+*/
 void CreateColorConflicts(std::map<int, std::vector<double> > &users, 
                           std::map<int, std::vector<double> > &sats,
                           std::vector<int> &freshUserIDS,
@@ -146,7 +171,7 @@ void CreateColorConflicts(std::map<int, std::vector<double> > &users,
                 std::vector<double> ConstructedVectorOne = ConstructVector(userOneCoordinates, satelliteCoordinates);
                 std::vector<double> ConstructedVectorTwo = ConstructVector(userTwoCoordinates, satelliteCoordinates);
 
-                if(WithinAngleRange(ConstructedVectorOne, ConstructedVectorTwo, 10.0)){
+                if(WithinAngleRange(ConstructedVectorOne, ConstructedVectorTwo, 10.00)){
                     conflictingIDS.push_back(secondUserID);
                 }
             }
@@ -156,6 +181,10 @@ void CreateColorConflicts(std::map<int, std::vector<double> > &users,
 
 }
 
+
+/*
+Map numbers to colors.
+*/
 std::string matchColorNumberToLabel(int colorToConsider){
     if(colorToConsider == 1){
         return "A";
@@ -169,6 +198,9 @@ std::string matchColorNumberToLabel(int colorToConsider){
     return "ERROR";
 }
 
+/*
+Optimize assignments of users to StarLink satellites
+*/
 void OptimizeMatches(std::map<int, std::vector<double> > &users, 
                      std::map<int, std::vector<double> > &sats,
                      std::map<int, std::vector<int> > &validUsersForSatellites, 
@@ -179,7 +211,7 @@ void OptimizeMatches(std::map<int, std::vector<double> > &users,
     for(currentPairIter = orderedByUserSatellites.begin(); currentPairIter != orderedByUserSatellites.end(); ++currentPairIter){ 
         std::pair<int, int> currentPair = *currentPairIter;
         int satID = currentPair.first;
-        //std::cout << "This is the Satellite ID: " << satID << "\n";
+        
         int beamNumber = 1;
         std::vector<int> userIDS = validUsersForSatellites[satID];
         std::vector<int> freshUserIDS;
@@ -187,7 +219,7 @@ void OptimizeMatches(std::map<int, std::vector<double> > &users,
         for(int i = 0; i < userIDS.size(); i++){
             int iterID = userIDS[i];
             if(userMatches.find(iterID) == userMatches.end()){
-                //std::cout << "This is the Fresh ID: " << iterID << "\n";
+                
                 freshUserIDS.push_back(iterID);
             }
         }
@@ -204,17 +236,17 @@ void OptimizeMatches(std::map<int, std::vector<double> > &users,
 
         for(int z = 0; z < freshUserIDS.size(); z++){
             int currentEvaluateID = freshUserIDS[z];
-            if(beamNumber == 33){
+            if(beamNumber == OVERFLOWSATS){
                 break;
             }if(userMatches.find(currentEvaluateID) != userMatches.end()){
                 continue;
             }
-            //std::cout << "This is the Evaluate ID: " << currentEvaluateID << "\n";
+            
             std::vector<int> problemIDS = userColorConflicts[currentEvaluateID];
             std::set<int> impossColors;
             for(int y = 0; y < problemIDS.size(); y++){
                 int individualProblemID = problemIDS[y];
-                //std::cout << "This is the Problem ID: " << individualProblemID << "\n";
+                
                 if(userMatches.find(individualProblemID) != userMatches.end()){
                     std::vector<int> assignment = userMatches[individualProblemID];
                     impossColors.insert(assignment[COLORINDEX]);
@@ -224,12 +256,13 @@ void OptimizeMatches(std::map<int, std::vector<double> > &users,
             std::set<int>::iterator chooseColorIterator;
             for(chooseColorIterator = allColors.begin(); chooseColorIterator != allColors.end(); chooseColorIterator++){
                 int colorToConsider = *chooseColorIterator;
-                //std::cout << "This is the FirstColor " << colorToConsider << "\n";
+                
                 if(impossColors.find(colorToConsider) == impossColors.end()){
                     std::vector<int> configuration;
                     configuration.push_back(satID);
                     configuration.push_back(beamNumber);
                     configuration.push_back(colorToConsider);
+
                     std::string colorLabel = matchColorNumberToLabel(colorToConsider);
                     std::cout << "sat " << satID << " beam " << beamNumber << " user " << currentEvaluateID << " color " << colorLabel << "\n";
                     userMatches[currentEvaluateID] = configuration;
@@ -248,7 +281,9 @@ void OptimizeMatches(std::map<int, std::vector<double> > &users,
 
 
 
-
+/*
+Parse Input
+*/
 void PopulateDictionaries(char *filename, 
                           std::map<int, std::vector<double> > &users, 
                           std::map<int, std::vector<double> > &sats,
@@ -274,7 +309,7 @@ void PopulateDictionaries(char *filename,
         bool hashtag = false;
 
         while(getline(check1, iteratorstr, ' ')){
-            //std::cout << iteratorstr << "\n";
+            
             if(iteratorstr == "#"){
                 hashtag = true;
                 break;
@@ -301,11 +336,11 @@ void PopulateDictionaries(char *filename,
                 double num = std::stod(currentDouble);
                 nums.push_back(num);
             }
-            //std::cout << "This is the flag bit " << flagbit << "\n";
+            
             
             switch(flagbit){
                 case 0:
-                    //std::cout << "User Case" << "\n";
+                    
                     users[id] = nums;
                     break;
                 case 1:
@@ -322,6 +357,9 @@ void PopulateDictionaries(char *filename,
     }                        
 }
 
+/*
+Sort Satellites based on how many users they serve.
+*/
 void CreateSortedVectorForSatellites(std::map<int, std::vector<int> > &validUsersForSatellites, 
                                      std::vector<std::pair<int, int> > &orderedByUserSatellites){
     std::map<int, std::vector<int> >::iterator iter;
@@ -340,7 +378,9 @@ void CreateSortedVectorForSatellites(std::map<int, std::vector<int> > &validUser
 
 
 
-
+/*
+Main Function
+*/
 int main(int argc, char** argv){
     char* filename = argv[1];
     std::map<int, std::vector<double> > users, sats, interferers;
